@@ -1,6 +1,8 @@
-// SPDX-License-Identifier: MIT
-// Sources flattened with hardhat v2.8.0 https://hardhat.org
+// Sources flattened with hardhat v2.8.2 https://hardhat.org
+
 // File @openzeppelin/contracts/access/IAccessControl.sol@v4.4.1
+
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (access/IAccessControl.sol)
 
 pragma solidity ^0.8.0;
@@ -92,7 +94,7 @@ interface IAccessControl {
 
 // File @openzeppelin/contracts/utils/Context.sol@v4.4.1
 
-  
+
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
 pragma solidity ^0.8.0;
@@ -120,7 +122,7 @@ abstract contract Context {
 
 // File @openzeppelin/contracts/utils/Strings.sol@v4.4.1
 
-  
+
 // OpenZeppelin Contracts v4.4.1 (utils/Strings.sol)
 
 pragma solidity ^0.8.0;
@@ -191,7 +193,7 @@ library Strings {
 
 // File @openzeppelin/contracts/utils/introspection/IERC165.sol@v4.4.1
 
-  
+
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)
 
 pragma solidity ^0.8.0;
@@ -220,7 +222,7 @@ interface IERC165 {
 
 // File @openzeppelin/contracts/utils/introspection/ERC165.sol@v4.4.1
 
-  
+
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/ERC165.sol)
 
 pragma solidity ^0.8.0;
@@ -251,7 +253,7 @@ abstract contract ERC165 is IERC165 {
 
 // File @openzeppelin/contracts/access/AccessControl.sol@v4.4.1
 
-  
+
 // OpenZeppelin Contracts v4.4.1 (access/AccessControl.sol)
 
 pragma solidity ^0.8.0;
@@ -474,74 +476,139 @@ abstract contract AccessControl is Context, IAccessControl, ERC165 {
 }
 
 
-// File contracts/Pool.sol
+// File contracts/ETHPool.sol
 
-  
-pragma solidity ^0.8.0;
 
-contract Pool is AccessControl {
+pragma solidity ^0.8.5;
 
-    event Received(address, uint);
-    event Withdrawed(address, uint);
-    event RewardsWithdrawed(string);
+/*
+ *  @Dev @gpylypchuk
+ *  @Challenge for Exactly Finance
 
-    uint public poolValue;
-    bytes32 public constant TEAM_MEMBER_ROLE = keccak256("TEAM_MEMBER_ROLE");
-    address [] public usersAddr;
+ *  With this contract you can deposit
+ *  Ethers and Earn Rewards by staking
+ *  at least 7 days.
+*/
 
-    struct Data {
-        uint userValueDeposited;
-        uint userTimeStartedStaking;
+contract ETHPool is AccessControl {
+
+    event Received(address indexed addr, uint256 amount);
+    event Sent(address indexed addr, uint256 amount);
+
+    /* 
+     * For @testing purposes you can set the 
+     * accounts and poolValue to PUBLIC.
+    */
+    bytes32 public constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
+    uint256 private constant time = 7 days;
+    address [] private accounts;
+    uint256 private poolValue;
+
+    struct User {
+        uint256 valueDeposited;
+        uint256 startDate;
         bool staking;
         bool newUser;
     }
 
-    Data[] public data;
-
-    mapping(address => Data) public users;
+    /*
+     @testing same, we can put users to PUBLIC.  
+    */
+    mapping(address => User) private users;
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(TEAM_MEMBER_ROLE, msg.sender);
+        _setupRole(TEAM_MEMBER, msg.sender);
     }
 
-    receive () external payable {
+    // This contract Receives Ether to Stake in ETHPool.
+
+    receive() external payable {
         require(msg.value > 0, "You have to deposit at least 1 wei.");
-        if(!(users[msg.sender].newUser)) usersAddr.push(msg.sender);
-        users[msg.sender].userValueDeposited += msg.value;
-        users[msg.sender].userTimeStartedStaking = block.timestamp;
-        users[msg.sender].staking = true;
-        users[msg.sender].newUser = true;
+        if(!(users[msg.sender].newUser)) accounts.push(msg.sender);
+        User storage user = users[msg.sender];
+        user.valueDeposited += msg.value;
+        user.startDate += block.timestamp;
+        user.staking = true;
+        user.newUser = true;
         poolValue += msg.value;
     }
 
-    function withdrawRewards(uint interest) onlyRole(TEAM_MEMBER_ROLE) public {
+    // Deposit Rewards Earned with Staking in ETHPool.
 
-        for (uint i = 0; i < usersAddr.length; i++){
-            address user = usersAddr[i];
-            uint sevenDaysTime = 604800;
-            if(block.timestamp >= users[user].userTimeStartedStaking + sevenDaysTime && users[user].staking) {
-                uint rewards = users[user].userValueDeposited * interest / 100;
-                users[user].userValueDeposited += rewards;
-                poolValue += rewards;
-            }                         
+    function depositRewards(uint256 earned)
+    onlyRole(TEAM_MEMBER) 
+    public 
+    returns (bool withdrawed) {
+        bool success = _deposit(earned);
+        return success;
+    }
+
+    /*
+     * For @testing purposes you can remove the require
+     * because it is not in production
+     * but poolValue HAS TO BE EQUAL TO address(this).balance!
+     * In other forms we can Steal money from our users.
+     * By other hand, in this contract users will always trust us,
+     * because we can always change fees -> stable finance?
+    */
+
+    function _deposit(uint256 _amount)
+    private 
+    returns (bool success) {
+        poolValue += _amount;
+        uint256 thisBalance =  address(this).balance;
+        require(poolValue == thisBalance, "PoolValue is not equal to The POOL VALUE!");
+        for(uint256 i = 0; i < accounts.length; i++) {
+            address user = accounts[i];
+            uint256 valueUser = users[user].valueDeposited;
+            uint256 percentage = valueUser / poolValue;
+            uint256 reward = _amount * percentage;
+            uint256 nowTime = block.timestamp;
+            uint256 endTime = users[user].startDate + time;
+            if(nowTime >= endTime) users[user].valueDeposited += reward;
         }
-
+        return true;
     }
 
-    function withdraw() public payable {
-        (msg.sender).call{ value: users[msg.sender].userValueDeposited, gas: 100000 };
-        poolValue -= users[msg.sender].userValueDeposited;
-        if(users[msg.sender].staking) users[msg.sender].userValueDeposited = 0;
-        emit Withdrawed(msg.sender, users[msg.sender].userValueDeposited);
+    function getPoolValue() public view returns (uint256) {
+        return address(this).balance;
     }
 
-    function addTeamMember(address account) public {
-        grantRole(TEAM_MEMBER_ROLE, account);
+    /*
+     * @Users Can retire their Ethers:
+     * If Users have not been staking for
+     * more than 7 days their retire will be
+     * without their "earns". But their initial
+     * deposites can be retired.
+    */
+
+    function retireMyEther(address payable to, uint256 amount)
+    public
+    returns (bool success) {
+        User storage user = users[msg.sender];
+        uint256 value = user.valueDeposited;
+        require(amount <= value, "You Cannot withdraw more Ether than you Deposited.");
+        to.transfer(amount);
+        user.valueDeposited -= amount;
+        if(user.valueDeposited == 0) user.staking = false;
+        poolValue -= amount;
+        emit Sent(msg.sender, amount);
+        return true;
     }
 
-    function removeTeamMember(address account) public {
-        revokeRole(TEAM_MEMBER_ROLE, account);
+    // Team Members Functions (Add and Remove).
+
+    function addTeamMember(address account)
+    public 
+    onlyRole(TEAM_MEMBER) {
+        grantRole(TEAM_MEMBER, account);
+    }
+
+    function removeTeamMember(address account) 
+    public
+    onlyRole(TEAM_MEMBER) {
+        revokeRole(TEAM_MEMBER, account);
     }
 
 }
