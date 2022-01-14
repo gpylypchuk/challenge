@@ -22,7 +22,7 @@ const privateKey = process.env.DEPLOYER_SIGNER_PRIVATE_KEY;
  * @deployed Contract already deployed at: 0x5006dEB7Ad141aEecAf9517E9e81A6B5Fb5876C6
  */
  module.exports = {
-  solidity: "0.8.7",
+  solidity: "0.8.11",
   networks: {
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${projectId}`,

@@ -6,8 +6,8 @@ import './app.css';
 
 function App() {
 	
-	const ethPoolAddress = '0x5006dEB7Ad141aEecAf9517E9e81A6B5Fb5876C6';
-	let selectedAccount, ethPoolContract, amountRetire, amountDeposit, web3;
+	const ethPoolAddress = '0x10f030EDfb5564D43e8f419fC41D7A19c05bC454';
+	let selectedAccount, ethPoolContract, amountRetire, amountDeposit, web3, poolValue;
 	let truncatedAddress = useTruncatedAddress(selectedAccount);
 
 	useEffect(() => {
@@ -29,8 +29,8 @@ function App() {
                 });
         }
 		web3 = new Web3(provider);
-		ethPoolContract = new web3.eth.Contract(ethPoolContractBuild.abi, ethPoolAddress);
-		ethPoolContract.methods.getPoolValue().call().then((balance) => poolValue = balance);
+		// ethPoolContract = new web3.eth.Contract(ethPoolContractBuild.abi, ethPoolAddress);
+		// ethPoolContract.methods.getPoolValue().call().then(console.log);
 	}, []);
 
 	const retire = () => {
@@ -56,6 +56,7 @@ function App() {
 			<div className='account'>
 				<p className='accountTitle'>Account</p>
 				<p id='account'></p>
+				<p id='pool'></p>
 			</div>
 			<div className='container'>
 				<div className='row'>
