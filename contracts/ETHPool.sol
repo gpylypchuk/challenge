@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 /**
 * @title ETHPool
-* @dev Pool Staking contract for Ether
 */
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -14,12 +13,13 @@ contract ETHPool is AccessControl {
     event Sent(address indexed addr, uint256 amount);
     event Deposited(bool success);
 
-    bytes32 public constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
-    uint256 public pool;
-    uint256 public reward;
-    uint256 public endDate;
+    bytes32 private constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
+    uint256 private pool;
+    uint256 private reward;
+    uint256 private depositDate;
 
-    mapping(address => uint256) public balances;
+    mapping(address => uint256) private balances;
+    mapping(address => uint256) private sentDate;
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -29,20 +29,20 @@ contract ETHPool is AccessControl {
     receive() external payable {
         require(msg.value > 0);
         balances[msg.sender] += msg.value;
+        sentDate[msg.sender] = block.timestamp;
         emit Received(msg.sender, msg.value);
     }
 
-    // Assuming this function will be executed every 7 days.
     function depositRewards(uint256 _reward) onlyRole(TEAM_MEMBER) public {
-        reward += _reward;
+        reward = _reward;
         pool = address(this).balance - _reward;
-        endDate = block.timestamp + 7 days;
+        depositDate = block.timestamp;
         emit Deposited(true);
     }
 
     function retireMyEther(address payable to, uint256 amount)
     public {
-        if(block.timestamp > endDate && reward > 0)
+        if(sentDate[msg.sender] < depositDate && reward > 0)
         balances[msg.sender] = balances[msg.sender] + 
         (((balances[msg.sender] * 1 ether / pool) * reward) / 1 ether);
         require(amount <= balances[msg.sender]);
