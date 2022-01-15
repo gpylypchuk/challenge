@@ -18,9 +18,9 @@ contract ETHPool is AccessControl {
     event Sent(address indexed addr, uint256 amount);
     event Deposited(bool success, uint256 amount);
 
-    bytes32 public constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
-    uint256 public constant time = 7 days;
-    address [] public accounts;
+    bytes32 private constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
+    uint256 private constant time = 7 days;
+    address [] private accounts;
 
     struct User {
         uint256 valueDeposited;
@@ -28,17 +28,16 @@ contract ETHPool is AccessControl {
         bool newUser;
     }
 
-    mapping(address => User) public users;
+    mapping(address => User) private users;
 
     constructor() {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(TEAM_MEMBER, msg.sender);
     }
 
     receive() external payable {
-        require(msg.value > 0, "You have to deposit at least 1 wei.");
-        if(!(users[msg.sender].newUser)) accounts.push(msg.sender);
+        require(msg.value > 0);
         User storage user = users[msg.sender];
+        if(!(user.newUser)) accounts.push(msg.sender);
         user.valueDeposited += msg.value;
         user.startDate = block.timestamp;
         user.newUser = true;
@@ -49,38 +48,27 @@ contract ETHPool is AccessControl {
     function depositRewards(uint256 earned)
     onlyRole(TEAM_MEMBER)
     public {
-        bool success = _deposit(earned);
-        require(success, "Contract could not deposit rewards.");
-        emit Deposited(success, earned);
-    }
-
-    function _deposit(uint256 _amount)
-    private 
-    returns (bool success) {
         uint256 pool = address(this).balance;
         for(uint256 i = 0; i < accounts.length; i++) {
-            address user = accounts[i];
-            uint256 valueUser = users[user].valueDeposited;
-            uint256 percentage = valueUser * 1 ether / pool;
-            uint256 reward = _amount * percentage / 1 ether;
-            uint256 nowTime = block.timestamp;
-            uint256 endTime = users[user].startDate + time;
-            if(nowTime > endTime) users[user].valueDeposited += reward;
+            address addr = accounts[i];
+            User storage user = users[addr];
+            uint256 reward = earned * (user.valueDeposited * 1 ether) / pool / 1 ether;
+            if(block.timestamp > user.startDate + time) user.valueDeposited += reward;
         }
-        return true;
+        emit Deposited(true, earned);
     }
 
     // @param -> address of user to transfer and amount (Retire Ethers in Account)
     function retireMyEther(address payable to, uint256 amount)
     public {
-        uint256 value = users[msg.sender].valueDeposited;
-        require(amount <= value, "You Cannot withdraw more Ether than you Deposited.");
+        User storage user = users[msg.sender];
+        require(amount <= user.valueDeposited);
         to.transfer(amount);
-        users[msg.sender].valueDeposited -= amount;
+        user.valueDeposited -= amount;
         emit Sent(msg.sender, amount);
     }
 
-    function getPoolValue() public view returns (uint256) {
+    function poolValue() public view returns(uint256) {
         return address(this).balance;
     }
 
