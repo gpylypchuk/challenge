@@ -1,15 +1,25 @@
 const { expect } = require("chai");
 const { ethers, waffle } = require("hardhat");
+const { time } = require('@openzeppelin/test-helpers');
 
 /** 
  * Tested with Hardhat
  * @run npx hardhat test
+ * 
+ * @dev To run the test use: set
+ * mapping 'balances' to PUBLIC, 
+ * uint 'endDate' to PUBLIC,
+ * uint 'pool' to PUBLIC,
+ * bytes32 hash 'TEAM_MEMBER' to PUBLIC.
+ * 
+ * This is because PRIVATE variables consume
+ * less Gas in deployment.
  */
 
 describe('Ethereum Pool Contract', () => {
 
   beforeEach(async() => {
-    [owner, user, teamMember] = await ethers.getSigners();
+    [owner, user, user2, user3, teamMember] = await ethers.getSigners();
     Pool = await ethers.getContractFactory("ETHPool");
     pool = await Pool.deploy();
     await pool.deployed();
@@ -21,7 +31,8 @@ describe('Ethereum Pool Contract', () => {
     await owner.sendTransaction({ to: pool.address, value: amount });
     await user.sendTransaction({ to: pool.address, value: amount });
     await user.sendTransaction({ to: pool.address, value: amount });
-    expect(await pool.getPoolValue()).to.be.equal(amount*4);
+    expect(await pool.poolValue()).to.be.equal(amount*4);
+    expect(await pool.balances(user.address)).to.be.equal(amount*2);
   });
 
   /* 
@@ -32,20 +43,8 @@ describe('Ethereum Pool Contract', () => {
   */
   it("Should Retire Deposits from Users", async() => {
     const amount = 1000;
-    await owner.sendTransaction({ to: pool.address, value: amount });
     await user.sendTransaction({ to: pool.address, value: amount });
     await pool.connect(user).retireMyEther(user.address, amount);
-    const poolValue = await pool.getPoolValue();
-    expect(poolValue).to.be.equal(amount);
-  });
-
-  // This test is From PRIVATE to PUBLIC accounts array.
-  it("Should Return the indexed Address", async() => {
-    const amount = 1000;
-    await owner.sendTransaction({ to: pool.address, value: amount });
-    await user.sendTransaction({ to: pool.address, value: amount });
-    const userAddress = await pool.accounts(1);
-    expect(userAddress).to.be.equal(user.address);
   });
 
   /*
@@ -55,7 +54,7 @@ describe('Ethereum Pool Contract', () => {
   */
   it("Should Add Team Member", async() => {
     await pool.connect(owner).addTeamMember(teamMember.address);
-    const isTeamMember = await pool.hasRole(pool.TEAM_MEMBER(), teamMember.address)
+    const isTeamMember = await pool.hasRole(pool.TEAM_MEMBER(), teamMember.address);
     expect(isTeamMember).to.be.equal(true);
   });
 
@@ -80,21 +79,33 @@ describe('Ethereum Pool Contract', () => {
     expect(pool.connect(teamMember).depositRewards(earned)).to.be.reverted;
   });
 
-  it("Should return the block.timestamp when user deposited", async() => {
+  it("Should return the block.timestamp when end deposited rewards", async() => {
     const amount = 1000;
     await user.sendTransaction({ to: pool.address, value: amount });
-    const block = await pool.users(user.address);
-    console.log(`    🕐 Block: ${block.startDate}`);
+    await user2.sendTransaction({ to: pool.address, value: amount });
+    await pool.connect(owner).depositRewards(amount);
+    const endDate = await pool.endDate();
+    console.log(`    🕐 Block: ${endDate}`);
   });
 
-  it("Should return all user Data", async() => {
-    const amount = 1000;
+  it("Should deposit rewards", async() => {
+    const amount = 2000;
     await user.sendTransaction({ to: pool.address, value: amount });
-    const struct = await pool.users(user.address);
-    console.log(`    💰 Value Deposited: ${struct.valueDeposited}`);
-    console.log(`    🕐 Time Started: ${struct.startDate}`);
-    console.log(`    🤔 Is Staking?: ${struct.staking}`);
-    console.log(`    😎 Is New User?: ${struct.newUser}`);
-  });
+    await user2.sendTransaction({ to: pool.address, value: amount });
+    await user3.sendTransaction({ to: pool.address, value: amount });
+    await owner.sendTransaction({ to: pool.address, value: amount }); // "Rewards"
+    const currentTimeBefore = await time.latest();
+    console.log(`    🕐 Current Time Before Increase: ${currentTimeBefore}`);
+    await pool.connect(owner).depositRewards(amount); // 
+    await user3.sendTransaction({ to: pool.address, value: amount });
+    await time.increase(time.duration.years(7));
+    await time.advanceBlock();
+    const currentTimeAfter = await time.latest();
+    console.log(`    🕐 Current Time After Increase: ${currentTimeAfter}`);
+    await user2.sendTransaction({ to: pool.address, value: amount });
+    const poolValue = await pool.pool();
+    expect(poolValue).to.be.equal(amount*3);
+    await pool.connect(user).retireMyEther(user3.address, amount+5);
+  })
 
 });

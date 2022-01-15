@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-/*
- *  @dev @gpylypchuk
- *  @challenge for Exactly Finance
- *
- *  This contract allows to you Deposit Ethers
- *  and Earn Rewards by Staking them by 7 days.
- *  Also you can retire your Ethers when you want.   
+/**
+* @title ETHPool
+* @dev Pool Staking contract for Ether
 */
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -18,50 +14,40 @@ contract ETHPool is AccessControl {
     event Sent(address indexed addr, uint256 amount);
     event Deposited(bool success);
 
-    bytes32 private constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
-    uint256 private constant time = 7 days;
-    uint256 private pool;
-    address [] private accounts;
+    bytes32 public constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
+    uint256 public pool;
+    uint256 public reward;
+    uint256 public endDate;
 
-    struct User {
-        uint256 valueDeposited;
-        uint256 startDate;
-        bool newUser;
-    }
-
-    mapping(address => User) private users;
+    mapping(address => uint256) public balances;
 
     constructor() {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(TEAM_MEMBER, msg.sender);
     }
 
     receive() external payable {
         require(msg.value > 0);
-        User storage user = users[msg.sender];
-        if(!(user.newUser)) accounts.push(msg.sender);
-        user.valueDeposited += msg.value;
-        user.startDate = block.timestamp;
-        user.newUser = true;
+        balances[msg.sender] += msg.value;
         emit Received(msg.sender, msg.value);
     }
 
-    // @param -> amount gained staking in ETHPool
-    // From O(n) Lineal to O(1) Distribution Rewards -> Less Computacional Complexity
-    function depositRewards() onlyRole(TEAM_MEMBER) public {
-        pool = address(this).balance;
+    // Assuming this function will be executed every 7 days.
+    function depositRewards(uint256 _reward) onlyRole(TEAM_MEMBER) public {
+        reward += _reward;
+        pool = address(this).balance - _reward;
+        endDate = block.timestamp + 7 days;
         emit Deposited(true);
     }
 
-    // @param -> address of user to transfer and amount (Retire Ethers in Account)
     function retireMyEther(address payable to, uint256 amount)
     public {
-        User storage user = users[msg.sender];
-        if(block.timestamp > block.timestamp + time) 
-        user.valueDeposited = user.valueDeposited + 
-        (((user.valueDeposited * 1 ether / pool) * pool) / 1 ether);
-        require(amount <= user.valueDeposited);
+        if(block.timestamp > endDate && reward > 0)
+        balances[msg.sender] = balances[msg.sender] + 
+        (((balances[msg.sender] * 1 ether / pool) * reward) / 1 ether);
+        require(amount <= balances[msg.sender]);
         to.transfer(amount);
-        user.valueDeposited -= amount;
+        balances[msg.sender] -= amount;
         emit Sent(msg.sender, amount);
     }
 
@@ -69,7 +55,6 @@ contract ETHPool is AccessControl {
         return address(this).balance;
     }
 
-    // Access Control Functions (Add and Remove Team Members)
     function addTeamMember(address account)
     public 
     onlyRole(TEAM_MEMBER) {
