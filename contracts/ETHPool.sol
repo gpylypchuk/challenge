@@ -16,10 +16,11 @@ contract ETHPool is AccessControl {
 
     event Received(address indexed addr, uint256 amount);
     event Sent(address indexed addr, uint256 amount);
-    event Deposited(bool success, uint256 amount);
+    event Deposited(bool success);
 
     bytes32 private constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
     uint256 private constant time = 7 days;
+    uint256 private pool;
     address [] private accounts;
 
     struct User {
@@ -45,23 +46,19 @@ contract ETHPool is AccessControl {
     }
 
     // @param -> amount gained staking in ETHPool
-    function depositRewards(uint256 earned)
-    onlyRole(TEAM_MEMBER)
-    public {
-        uint256 pool = address(this).balance;
-        for(uint256 i = 0; i < accounts.length; i++) {
-            address addr = accounts[i];
-            User storage user = users[addr];
-            uint256 reward = earned * (user.valueDeposited * 1 ether) / pool / 1 ether;
-            if(block.timestamp > user.startDate + time) user.valueDeposited += reward;
-        }
-        emit Deposited(true, earned);
+    // From O(n) Lineal to O(1) Distribution Rewards -> Less Computacional Complexity
+    function depositRewards() onlyRole(TEAM_MEMBER) public {
+        pool = address(this).balance;
+        emit Deposited(true);
     }
 
     // @param -> address of user to transfer and amount (Retire Ethers in Account)
     function retireMyEther(address payable to, uint256 amount)
     public {
         User storage user = users[msg.sender];
+        if(block.timestamp > block.timestamp + time) 
+        user.valueDeposited = user.valueDeposited + 
+        (((user.valueDeposited * 1 ether / pool) * pool) / 1 ether);
         require(amount <= user.valueDeposited);
         to.transfer(amount);
         user.valueDeposited -= amount;
