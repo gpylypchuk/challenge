@@ -40,7 +40,7 @@ contract ETHPool is AccessControl {
         emit Deposited(true);
     }
 
-    function retireMyEther(address payable to, uint256 amount)
+    function withdraw(address payable to, uint256 amount)
     public {
         if(sentDate[msg.sender] < depositDate && reward > 0)
         balances[msg.sender] = balances[msg.sender] + 
