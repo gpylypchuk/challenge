@@ -40,10 +40,7 @@ describe('Ethereum Pool Contract', () => {
     it('Should not Withdraw Ether', async() => {
       const amount = ethers.utils.parseEther('10');
       await attacker.sendTransaction({ to: pool.address, value: amount });
-      expect(
-        pool.connect(attacker)
-        .withdraw(attacker.address, amount+1)
-      ).to.be.reverted;
+      expect(pool.connect(attacker).withdraw(attacker.address, amount+1)).to.be.reverted;
     });
 
     it('Should let retire Ethers to another User', async() => {

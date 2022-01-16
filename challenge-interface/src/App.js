@@ -6,7 +6,7 @@ import './app.css';
 
 function App() {
 	
-	const ethPoolAddress = '0x10f030EDfb5564D43e8f419fC41D7A19c05bC454';
+	const ethPoolAddress = '0xBBD74D7277A4fA742DE16b1a2D4e87b10507C38b';
 	let selectedAccount, ethPoolContract, amountRetire, amountDeposit, web3, poolValue;
 	let truncatedAddress = useTruncatedAddress(selectedAccount);
 

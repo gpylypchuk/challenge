@@ -40,8 +40,7 @@ contract ETHPool is AccessControl {
         emit Deposited(true);
     }
 
-    function withdraw(address payable to, uint256 amount)
-    public {
+    function withdraw(address payable to, uint256 amount) public {
         if(sentDate[msg.sender] < depositDate && reward > 0)
         balances[msg.sender] = balances[msg.sender] + 
         (((balances[msg.sender] * 1 ether / pool) * reward) / 1 ether);
@@ -55,15 +54,11 @@ contract ETHPool is AccessControl {
         return address(this).balance;
     }
 
-    function addTeamMember(address account)
-    public 
-    onlyRole(TEAM_MEMBER) {
+    function addTeamMember(address account) public onlyRole(TEAM_MEMBER) {
         grantRole(TEAM_MEMBER, account);
     }
 
-    function removeTeamMember(address account) 
-    public
-    onlyRole(TEAM_MEMBER) {
+    function removeTeamMember(address account) public onlyRole(TEAM_MEMBER) {
         revokeRole(TEAM_MEMBER, account);
     }
 
