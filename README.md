@@ -1,6 +1,6 @@
 # Deployed at
 
-- https://rinkeby.etherscan.io/address/0x10f030EDfb5564D43e8f419fC41D7A19c05bC454
+- https://rinkeby.etherscan.io/address/0xBBD74D7277A4fA742DE16b1a2D4e87b10507C38b
 
 # Web App
 
