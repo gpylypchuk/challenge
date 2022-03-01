@@ -19,7 +19,7 @@ const privateKey = process.env.DEPLOYER_SIGNER_PRIVATE_KEY;
  * 
  * @run npx hardhat run --network rinkeby ./scripts/deploy-script.js
  * 
- * @deployed Contract already deployed at: 0x5006dEB7Ad141aEecAf9517E9e81A6B5Fb5876C6
+ * @deployed Contract already deployed at: 0xA5de4364e621f37F73Dfa6fCcd905aA427aE192a
  */
  module.exports = {
   solidity: "0.8.9",

@@ -69,7 +69,6 @@ contract ETHPool is AccessControl {
     /**
     * @dev For complexity purposes O(1), the user have to claim his Rewards
     * by calling this function. Theorically has 1 week to do this.
-    *
     * @dev For calculating Rewards First we do (100 * MyDeposit) / TotalDeposits = Percentage
     * Then we have to multiply Percentage by Rewards to get the amount of Rewards that user will get.
     * So, (Percentage * Rewards) / 100 = Amount of Rewards that user will get.
