@@ -1,82 +1,27 @@
-# Deployed at
+# Ethereum Pool 💸
 
-- https://rinkeby.etherscan.io/address/0xBBD74D7277A4fA742DE16b1a2D4e87b10507C38b
+> Actually deployed at [Rinkeby](https://rinkeby.etherscan.io/address/0xa5de4364e621f37f73dfa6fccd905aa427ae192a)
 
-# Web App
+## Features 🛠
+| Feature | Supported |
+|----------|------------ |
+| Users can Deposit | ✔ |
+| Users can Claim Rewards | ✔ |
+| Users can Withdraw | ✔ |
+| Security Review | ✔ |
+| Team Members Can Deposit Rewards | ✔ |
+| Rinkeby Deployed and Verified Contract | ✔ |
+| Tests | ✔ |
+| Frontend (in process!) | ❌ |
 
-- https://cubefinance.netlify.app/
+## How to Deploy Your ETHPool Contract 📝
 
-# Problem
-
-_This challenge has a 'bug': Users can deposit Ether a day before and receive rewards without waiting seven days._
-# Basic Sample Hardhat Project
-
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
-
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
-
-# Smart Contract Challenge
-
-## A) Challenge
-
-### 1) Setup a project and create a contract
-
-#### Summary
-
-ETHPool provides a service where people can deposit ETH and they will receive weekly rewards. Users must be able to take out their deposits along with their portion of rewards at any time. New rewards are deposited manually into the pool by the ETHPool team each week using a contract function.
-
-#### Requirements
-
-- Only the team can deposit rewards.
-- Deposited rewards go to the pool of users, not to individual users.
-- Users should be able to withdraw their deposits along with their share of rewards considering the time when they deposited.
-
-Example:
-
-> Let say we have user **A** and **B** and team **T**.
->
-> **A** deposits 100, and **B** deposits 300 for a total of 400 in the pool. Now **A** has 25% of the pool and **B** has 75%. When **T** deposits 200 rewards, **A** should be able to withdraw 150 and **B** 450.
->
-> What if the following happens? **A** deposits then **T** deposits then **B** deposits then **A** withdraws and finally **B** withdraws.
-> **A** should get their deposit + all the rewards.
-> **B** should only get their deposit because rewards were sent to the pool before they participated.
-
-#### Goal
-
-Design and code a contract for ETHPool, take all the assumptions you need to move forward.
-
-You can use any development tools you prefer: Hardhat, Truffle, Brownie, Solidity, Vyper.
-
-Useful resources:
-
-- Solidity Docs: https://docs.soliditylang.org/en/v0.8.4
-- Educational Resource: https://github.com/austintgriffith/scaffold-eth
-- Project Starter: https://github.com/abarmat/solidity-starter
-
-### 2) Write tests
-
-Make sure that all your code is tested properly
-
-### 3) Deploy your contract
-
-Deploy the contract to any Ethereum testnet of your preference. Keep record of the deployed address.
-
-Bonus:
-
-- Verify the contract in Etherscan
-
-### 4) Interact with the contract
-
-Create a script (or a Hardhat task) to query the total amount of ETH held in the contract.
-
-_You can use any library you prefer: Ethers.js, Web3.js, Web3.py, eth-brownie_
+> Using Rinkeby Testing Network (You have balance in your Wallet)
+1. Install the dependencies: `npm install --save-dev`
+2. Create a `.env` and put your private key and InfuraNode ID following the `.env.example` example
+4. Deploy the ETHPool Contract with `npx hardhat run --network rinkeby ./scripts/deploy-script.js`
+5. The address of the deployed contract will be printed in the console, copy it.
+6. Now go to [Rinkeby](https://rinkeby.etherscan.io/) and paste the address of the contract.
+7. Verify the contract. To do this type in console: `npx hardhat flatten > Flattened.sol`
+8. Delete extra Licenses in the contract, and then copy and paste in the verify section in Rinkeby Network.
+9. Done!, Now, you can test easily the contract in Rinkeby Network!
