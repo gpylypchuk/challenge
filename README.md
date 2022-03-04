@@ -2,6 +2,8 @@
 
 > Actually deployed at [Rinkeby](https://rinkeby.etherscan.io/address/0xa5de4364e621f37f73dfa6fccd905aa427ae192a)
 
+> Frontend deployed at [Vercel](https://challenge-interface-gpylypchuk.vercel.app/). It's simple, created with React and Chrakra.
+
 ## Features 🛠
 | Feature | Supported |
 |----------|------------ |
@@ -12,7 +14,7 @@
 | Team Members Can Deposit Rewards | ✔ |
 | Rinkeby Deployed and Verified Contract | ✔ |
 | Tests | ✔ |
-| Frontend (in process!) | ❌ |
+| Frontend (still in process!) | ✔ |
 
 ## How to Deploy Your ETHPool Contract 📝
 
