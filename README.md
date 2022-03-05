@@ -2,7 +2,7 @@
 
 > Actually deployed at [Rinkeby](https://rinkeby.etherscan.io/address/0xa5de4364e621f37f73dfa6fccd905aa427ae192a)
 
-> Frontend deployed at [Vercel](https://challenge-interface-gpylypchuk.vercel.app/). It's simple, created with React and Chrakra.
+> Frontend deployed at [Vercel](https://challenge-gpylypchuk.vercel.app/). It's simple, created with React and Chrakra.
 
 ## Features 🛠
 | Feature | Supported |
