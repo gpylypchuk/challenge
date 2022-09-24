@@ -1,100 +1,190 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-/**
-* @title Ethereum Pool
-* @author Geronimo Pylypchuk
-*
-* @dev Ethereum Pool is a smart contract that allows users to earn Ether.
-* To earn Ether, users can deposit Ether to the smart contract. And then,
-* when a Team Member deposits Rewards, claim it and withdraw the Ether earned.
-*/
+//SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
+/**
+ * @title Ether Pool
+ * @author Geronimo Pylypchuk
+ *
+ * @dev Challenge Solution for Exactly Finance
+ *
+ * @dev ETHPool contract is used to let users
+ * of Ethereum Blockchain deposit their Ethers
+ * and EARN rewards "weekly" or when TEAM_MEMBERS
+ * deposits to the pool of users the reward.
+ */
+
 contract ETHPool is AccessControl {
+  /************************ 
+  ======== EVENTS ========
+  *************************/
+
+  event Withdrew(bool success, bytes data, uint256 amount);
+
+  event Deposited(bool success, uint256 amount);
+
+  /************************ 
+  ==== STATE VARIABLES ====
+  *************************/
+
+  bytes32 private constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
+
+  // Pool value without rewards
+  uint256 private _pool;
+
+  // Acumulator of times that TEAM_MEMBER deposited rewards.
+  uint256 private _counter;
+
+  // Sets the last date that a TEAM_MEMBER deposited rewards.
+  uint256 private _dateRewarded;
+
+  // Total rewards distributed (without withdraws)
+  uint256 private _totalRewards;
+
+  // Balances of users by their address
+  mapping(address => uint256) public balance;
+
+  // Tracks by index of _counter the reward sent by TEAM_MEMBER
+  mapping(uint256 => uint256) private _reward;
+
+  // Adds value deposited after the TEAM_MEMBER deposited rewards.
+  mapping(address => mapping(uint256 => uint256)) private _notRewarded;
+
+  // Sets the _counter linked to User address (first time deposited)
+  mapping(address => uint256) private _since;
+
+  /********************** 
+  ===== CONSTRUCTOR =====
+  ***********************/
+
+  constructor() {
+    _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    _setupRole(TEAM_MEMBER, msg.sender);
+  }
+
+  /*********************** 
+  === PUBLIC FUNCTIONS ===
+  ************************/
+
+  /// @notice Users can deposit Ether only with this function.
+  function deposit() public payable {
+    // Deposit Ether must be greater than zero.
+    require(msg.value > 0, "Deposit: send more than 0 ether");
+
+    // Sets the first time the user deposited (even if withdrawed).
+    if (balance[msg.sender] == 0) _since[msg.sender] = _counter;
+
+    // Increments balance by value sent by user.
+    balance[msg.sender] += msg.value;
+
+    // Accumulates the balance deposited after reward deposit.
+    if (block.timestamp > _dateRewarded)
+      _notRewarded[msg.sender][_counter] += msg.value;
+
+    emit Deposited(true, msg.value);
+  }
+
+  /**
+   * @dev This function ables to users
+   * withdraw all their balances plus their earned
+   * Ether if they participated in distributed rewards
+   */
+  function withdraw() public {
+    /**
+     * @notice Saves balance, then sets to zero user balance
+     * (eviting reentrance hacks).
+     */
+    uint256 amount = balance[msg.sender];
+    balance[msg.sender] = 0;
+
+    // Validation balance have to be greater than zero.
+    require(amount > 0, "Withdraw: Nothing to withdraw");
 
     /**
-    * @notice Some events for tracking data.
-    */
-    event Deposited(address indexed user, uint256 amount);
-    event RewardsClaimed(address indexed user, uint256 amount);
+     * @notice Saves the times that the user has participated
+     * in rewards sent by TEAM_MEMBERS
+     */
+    uint256 rewardsParticipated = _counter - _since[msg.sender];
 
-    /**
-    * @dev Team member role who has access to depositRewards function
-    */
-    bytes32 private constant TEAM_MEMBER = keccak256("TEAM_MEMBER");
+    if (rewardsParticipated > 0) {
+      // Balance without not rewarded balance (deposits after reward deposit)
+      uint256 reward;
 
-    /**
-    * @notice rewardsDate is the date when the rewards are distributed
-    * @notice rewards are the amount of Last Time Deposited Rewards
-    * @notice poolValueMoment is the Pool Value when Deposited Rewards
-    */
-    uint256 public rewardsDate;
-    uint256 public rewards;
-    uint256 public poolValueMoment;
+      /**
+       * @dev Adds to reward variable every time between
+       * last deposit reward and rewards user have participated.
+       * @notice Critical for gas fees (in charge of the user)
+       * @notice Lineal complexity O(n)
+       */
+      unchecked {
+        uint256 index = _counter;
+        while (rewardsParticipated > 0) {
+          reward += _reward[index];
+          assembly {
+            // rewardsParticipated--
+            rewardsParticipated := sub(1, rewardsParticipated)
+            // index--
+            index := sub(1, index)
+          }
+        }
+      }
 
-    /**
-    * @notice balances are the amount of Ether deposited of each user in the pool
-    * @notice depositedDate is the date of the last deposit of each user
-    */
-    mapping(address => uint256) public balances;
-    mapping(address => uint256) public depositDate;
+      /**
+       * @dev Calculate the percentage -> BALANCE / POOL
+       *
+       * @dev Then, calculate user's portion of rewards
+       * by multipling the rewards by percentage
+       * like that -> TotalRewards * Percentage
+       * E.g. I participated in 2 rewards, therefore,
+       * the total rewards were 200 wei and my participation
+       * in the total pool balance deposited is 25%,
+       * my earned amount will be 200 wei * 25% = 50 wei
+       *
+       * @dev Finally, this amount earned is added to the
+       * original balance of user. E.g. My 50 wei plus my original
+       * balance that I deposited in pool -> 50 wei + 100 wei.
+       */
+      uint256 validBalance = amount - _notRewarded[msg.sender][_counter];
+      uint256 percentage = (validBalance * (_pool * 1 ether)) / _pool;
+      uint256 earned = (reward * percentage) / (_pool * 1 ether);
 
-    constructor() {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(TEAM_MEMBER, msg.sender);
+      _totalRewards -= earned;
+
+      amount = amount + earned;
     }
 
-    /**
-    * @notice When User deposits increments his balance
-    * @notice When User deposits his deposit Date is the current Block Timestamp
-    */
-    receive() payable external {
-        balances[msg.sender] += msg.value;
-        depositDate[msg.sender] = block.timestamp;
-        emit Deposited(msg.sender, msg.value);
+    // Transfers the total earned plus the balance of user
+    (bool success, bytes memory data) = payable(msg.sender).call{
+      value: amount
+    }("");
+
+    emit Withdrew(success, data, amount);
+  }
+
+  /**
+   * @dev TEAM_MEMBER Function for deposit rewards in Pool of Users.
+   */
+  function depositRewards() public payable onlyRole(TEAM_MEMBER) {
+    unchecked {
+      assembly {
+        sstore(_counter.slot, add(1, sload(_counter.slot))) // _counter++
+      }
     }
 
-    /**
-    * @dev TEAM_MEMBER role can deposit Rewards to the Pool by sending
-    * Ether to the smart contract (calling this payable function).
-    */
-    function depositRewards() onlyRole(TEAM_MEMBER) payable public {
-        rewardsDate = block.timestamp;
-        rewards = msg.value;
-        poolValueMoment = address(this).balance - rewards;
-    }
+    _dateRewarded = block.timestamp;
+    _reward[_counter] = msg.value;
+    _totalRewards += msg.value;
 
-    /**
-    * @dev For complexity purposes O(1), the user have to claim his Rewards
-    * by calling this function. Theorically has 1 week to do this.
-    * @dev For calculating Rewards First we do (100 * MyDeposit) / TotalDeposits = Percentage
-    * Then we have to multiply Percentage by Rewards to get the amount of Rewards that user will get.
-    * So, (Percentage * Rewards) / 100 = Amount of Rewards that user will get.
-    */
-    function claimRewards() public {
-        require(depositDate[msg.sender] <= rewardsDate, "Can not claim rewards before deposit");
-        depositDate[msg.sender] = block.timestamp;
-        uint256 reward = (((100 * balances[msg.sender] * 1 ether) / (poolValueMoment * 1 ether)) * rewards) / 100;
-        balances[msg.sender] += reward;
-        emit RewardsClaimed(msg.sender, reward);
-    }
+    // Pool is equal total balance in address discounting rewards
+    _pool = address(this).balance - _totalRewards;
+  }
 
-    /**
-    * @notice With this function all user can withdraw their Ether (including Rewards)
-    */
-    function withdraw(uint256 _amount) public {
-        require(balances[msg.sender] >= _amount, "Not enough funds");
-        balances[msg.sender] -= _amount;
-        payable(msg.sender).transfer(_amount);
-    }
-    
-    /**
-    * @return the amount of Ether deposited in the Pool
-    */
-    function poolValue() public view returns (uint256) {
-        return address(this).balance;
-    }
-
+  /**
+   * @dev This receive function with revert evits dust ether or
+   * possibles kill hacks.
+   */
+  receive() external payable {
+    revert("No Receive: Only with Deposit function");
+  }
 }
